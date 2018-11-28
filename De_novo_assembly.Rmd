@@ -1,0 +1,24 @@
+---
+title: "De_novo_assembly"
+author: "Holly"
+date: "11/28/2018"
+output: html_document
+---
+
+use wget <web path> to download files from Novogene if needed
+
+Navigate to the Gopher raw reads on treebeard
+
+log into treebeard and navigate to:
+data/rocfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/
+
+navigate into raw_data folders
+
+gunzip files to compare read numbers/sizes to make sure that files were downloaded correctly
+
+after unzipping use command to look for number of lines: 
+wc -l 
+
+also look at each file with head and tail, line count
+
+
