@@ -17,8 +17,43 @@ navigate into raw_data folders
 gunzip files to compare read numbers/sizes to make sure that files were downloaded correctly
 
 after unzipping use command to look for number of lines: 
-wc -l 
+wc -l/4 for each file
+
+helpful to write loop that will: 
+unzip file
+count lines
+append lines to new text file
+zip file
 
 also look at each file with head and tail, line count
 
+Trinity v 2.5.1 script (via location on Khaleesi):
+(to see what version, type /opt/trinityrnaseq/Trinity --version)
+```{bash}
 
+/opt/trinityrnaseq/Trinity --trimmomatic --seqType fq --max_memory 50G --SS_lib_type RF \
+--left SC_R_1.fq.gz, SC_U_1.fq.gz, SC_E_1.fq.gz, SC_C_1.fq.gz \
+--right SC_R_2.fq.gz, SC_U_2.fq.gz, SC_E_2.fq.gz, SC_C_2.fq.gz \
+--CPU 10 --full_cleanup 
+```
+to run over a series of days in the background, you can use screen or NoHangup: 
+might need to add perl
+```{bash}
+nohup perl /opt/trinityrnaseq/Trinity --trimmomatic --seqType fq --max_memory 50G --SS_lib_type RF \
+--left SC_R_1.fq.gz, SC_U_1.fq.gz, SC_E_1.fq.gz, SC_C_1.fq.gz \
+--right SC_R_2.fq.gz, SC_U_2.fq.gz, SC_E_2.fq.gz, SC_C_2.fq.gz \
+--CPU 10 --full_cleanup --ouput Gopher_HMD_Trinity > Gopher_HMD_Trinity_out.txt 2>&1 &
+```
+after running you will get a code, make sure to write the code down so that you can go back to look at the right one
+
+View the ouput file to check status
+```{bash}
+tail Gopher_HMD_Trinity_out.txt
+```
+
+Compute assembly stats
+```{bash}
+mv Trinity.fasta Gopher_HMD_Trinity.fasta
+perl /opt/trinityrnaseq/util/TrinityStats.pl Gopher_HMD_Trinity.fasta
+```
+then copy the output information
