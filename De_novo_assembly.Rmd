@@ -12,12 +12,12 @@ These notes document how to run a Trinity pipeline to create de novo transcripto
   a. use wget <web path> to download files from Novogene if needed
 
   b. Navigate to the Gopher raw reads on treebeard:       
-    data/rocfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/raw_data_1 (or raw_data_2      depending on how you det up the data)
+    data/rocfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/raw_data_1 (or raw_data_2 depending on how you det up the data)
 
 
 2. File QC: 
 
-  a. gunzip files to compare read numbers/sizes to make sure that files were downloaded         correctly. After unzipping use command to look for number of lines: wc -l/4 for each        file(it is helpful to write loop that will: unzip file, count lines, append lines to        new, text file, zip file)
+  a. gunzip files to compare read numbers/sizes to make sure that files were downloaded correctly. After unzipping use command to look for number of lines: wc -l/4 for each file(it is helpful to write loop that will: unzip file, count lines, append lines to new, text file, zip file)
   
 ```{bash}
 
@@ -42,7 +42,7 @@ done
 ```
 
 
-  b. Also look at each file with head and tail, line count, to ensure they match up with the     sequencing read data (from NovoGene)
+  b. Also look at each file with head and tail, line count, to ensure they match up with the sequencing read data (from NovoGene)
 
 3. Running Trinity:
 
