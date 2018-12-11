@@ -5,55 +5,72 @@ date: "11/28/2018"
 output: html_document
 ---
 
-use wget <web path> to download files from Novogene if needed
+These notes document how to run a Trinity pipeline to create de novo transcriptomes. 
 
-Navigate to the Gopher raw reads on treebeard
+1. Getting started: 
+  
+  a. use wget <web path> to download files from Novogene if needed
 
-log into treebeard and navigate to:
-data/rocfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/
+  b. Navigate to the Gopher raw reads on treebeard:       
+    data/rocfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/raw_data_1 (or raw_data_2      depending on how you det up the data)
 
-navigate into raw_data folders
 
-gunzip files to compare read numbers/sizes to make sure that files were downloaded correctly
+2. File QC: 
 
-after unzipping use command to look for number of lines: 
-wc -l/4 for each file
+  a. gunzip files to compare read numbers/sizes to make sure that files were downloaded         correctly. After unzipping use command to look for number of lines: wc -l/4 for each        file(it is helpful to write loop that will: unzip file, count lines, append lines to        new, text file, zip file)
+  
+```{bash}
 
-helpful to write loop that will: 
-unzip file
-count lines
-append lines to new text file
-zip file
+#This is a script to check the read counts for your samples when in a .fastq.gz file format
 
-also look at each file with head and tail, line count
+#USAGE: read_count.sh <output.file>
+
+for file in *.fastq.gz
+
+do
+
+  gunzip -k $file
+
+  newfile=$(basename $file .gz)
+
+  awk 'BEGIN{count=0}{count+=/\+/}END{print FILENAME "\t" count}' ${newfile} >> $1.txt
+
+  rm -f ${newfile}
+
+done
+
+```
+
+
+  b. Also look at each file with head and tail, line count, to ensure they match up with the     sequencing read data (from NovoGene)
+
+3. Running Trinity:
 
 Trinity v 2.5.1 script (via location on Khaleesi):
 (to see what version, type /opt/trinityrnaseq/Trinity --version)
 ```{bash}
 
-/opt/trinityrnaseq/Trinity --trimmomatic --seqType fq --max_memory 50G --SS_lib_type RF \
---left SC_R_1.fq.gz, SC_U_1.fq.gz, SC_E_1.fq.gz, SC_C_1.fq.gz \
---right SC_R_2.fq.gz, SC_U_2.fq.gz, SC_E_2.fq.gz, SC_C_2.fq.gz \
---CPU 10 --full_cleanup 
+/opt/trinityrnaseq-Trinity-v2.4.0/Trinity --trimmomatic --seqType fq --max_memory 50G --SS_lib_type RF --left SC_R_1.fq.gz,SC_U_1.fq.gz,SC_E_1.fq.gz,SC_C_1.fq.gz --right SC_R_2.fq.gz,SC_U_2.fq.gz,SC_E_2.fq.gz,SC_C_2.fq.gz --CPU 10 --full_cleanup --output Gopher_HMD_Trinity > Gopher_HMD_Trinity_out.txt 2>&1 &
 ```
-to run over a series of days in the background, you can use screen or NoHangup: 
-might need to add perl
-```{bash}
-nohup perl /opt/trinityrnaseq/Trinity --trimmomatic --seqType fq --max_memory 50G --SS_lib_type RF \
---left SC_R_1.fq.gz, SC_U_1.fq.gz, SC_E_1.fq.gz, SC_C_1.fq.gz \
---right SC_R_2.fq.gz, SC_U_2.fq.gz, SC_E_2.fq.gz, SC_C_2.fq.gz \
---CPU 10 --full_cleanup --ouput Gopher_HMD_Trinity > Gopher_HMD_Trinity_out.txt 2>&1 &
-```
-after running you will get a code, make sure to write the code down so that you can go back to look at the right one
+To run over a series of days in the background, you can use screen or NoHangup: 
 
-View the ouput file to check status
+```{bash}
+nohup perl /opt/trinityrnaseq-Trinity-v2.4.0/Trinity --trimmomatic --seqType fq --max_memory 50G --SS_lib_type RF --left SC_R_1.fq.gz,SC_U_1.fq.gz,SC_E_1.fq.gz,SC_C_1.fq.gz --right SC_R_2.fq.gz,SC_U_2.fq.gz,SC_E_2.fq.gz,SC_C_2.fq.gz --CPU 10 --full_cleanup --output Gopher_HMD_Trinity > Gopher_HMD_Trinity_out.txt 2>&1 &
+```
+After running you will get a code, make sure to write the code down so that you can go back to look at the right one. 
+
+4. Checking run status:
+
+  a. Running Trinity will take a few days. To check the status and make sure things are running smoothly, View the ouput file regularly (once or twice a day until finished). 
 ```{bash}
 tail Gopher_HMD_Trinity_out.txt
 ```
-
-Compute assembly stats
+  b. You will know the run has finished when you see a new fasta file in your working directory. 
+  
+  
+5. Computing assembly stats: 
 ```{bash}
 mv Trinity.fasta Gopher_HMD_Trinity.fasta
 perl /opt/trinityrnaseq/util/TrinityStats.pl Gopher_HMD_Trinity.fasta
 ```
-then copy the output information
+  a. Then copy the output information. 
