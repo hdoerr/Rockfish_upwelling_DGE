@@ -1,0 +1,150 @@
+---
+title: "Gopher_QC/trimmo"
+author: "Holly"
+date: "December 20, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Run Trimmomatic on a single fastq file 
+
+
+
+We will use Trimmomatic parameters based on MacManes et al. 2015:
+
+
+
+MacManes, M. D. (2014). On the optimal trimming of high-throughput mRNA sequence data. Frontiers in genetics, 5, 13.
+
+
+
+In the following example, we run Trimmomatic on 'example using 'CLMP001A_S52_L005_R1_001.fastq'
+
+
+
+(we will run this script on treebeard server)
+
+
+
+```{bash, eval=FALSE}
+
+java -jar /opt/Trimmomatic-0.35/trimmomatic-0.35.jar PE \               # call program using SE option
+
+-phred33 \                                                              # Illumina quality score
+
+GG593_1.fq.gz GG593_2.fq.gz GG593_1_trimmo_paired.fq.gz GG593_1_trimmo_unpaired.fq.gz GG593_2_trimmo_paired.fq.gz GG593_2_trimmo_unpaired.fq.gz \  # input/output filenames
+
+ILLUMINACLIP:/opt/Trimmomatic-0.35/adapters/TruSeq3-PE.fa:2:30:10 \     # adapter removal
+
+SLIDINGWINDOW:4:5 LEADING:5 TRAILING:5 MINLEN:25                        # poor quality base removal
+
+```
+
+
+
+# This will perform the following steps in this order:
+
+1. Remove Illumina adapters provided in TruSeq3-SE.fa (provided)
+
+note: Trimmomatic will look for seed matches (16 bases) allowing maximally 2 mismatches. 
+
+These seeds will be extended and clipped if in the case of paired end reads a score of 
+
+30 is reached (about 50 bases), or in the case of single ended reads a score of 10 (about 17 bases)
+
+2. Remove leading low quality or N bases (below quality 5)
+
+3. Remove trailing low quality or N bases (below quality 5)
+
+4. Scan the read with a 4 base wide sliding window, cutting when the average quality per base drops below 5
+
+5. Drop reads which are less than 25 bases long after these steps
+
+
+
+Trimmomatic manual here:
+
+ http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/TrimmomaticManual_V0.32.pdf
+
+
+
+## Run Trimmomatic on all fastq files in a directory 
+
+(this script will be run on treebeard server)
+
+
+
+We can use a for loop in bash to run trimmomatic on all the files ending in .fastq and appending the original file name with '.trimmo.fastq' 
+
+
+
+```{bash, eval=FALSE}
+
+for i in *.fastq;
+
+do
+
+	echo working with "$i"
+
+	newfile="$(basename $i .fastq)"  # for all files ending in .fastq within a directory
+
+    java -jar /opt/Trimmomatic-0.35/trimmomatic-0.35.jar SE \
+
+    -phred33 ${newfile}.fastq ${newfile}.trimmo.fastq \ # '{newfile}' refers to each file being evlauated
+
+    ILLUMINACLIP:/opt/Trimmomatic-0.35/adapters/TruSeq3-SE.fa:2:30:10 \
+
+    SLIDINGWINDOW:4:5 LEADING:5 TRAILING:5 MINLEN:25 
+
+done;
+
+```
+
+
+
+## FASTQC
+
+
+
+TO further inspect our files, we will now run fastqc on BOTH the raw and the trimmed files to see how they look and whether we removed all the adaptor sequence. More more info on this tool, go to their website:
+
+
+
+https://www.bioinformatics.babraham.ac.uk/projects/fastqc/
+
+
+
+```{bash, eval=FALSE}
+
+fastqc filename.fastq
+
+fastqc filename_trimmo.fastq
+
+```
+
+
+
+Let's download the report files and view them on our laptops. We will use the `scp` command on a terminal window on our laptops to do this. Before you run this command, navigate the the folder on your computer where you want to download the files. Do not run this command on the server!
+
+
+
+```{bash, eval=FALSE}
+
+scp otterID@treebeard.csumb.edu:/file/path/to/your.stuff/* .
+
+```
+
+
+
+## References
+
+
+
+Bolger, A. M., Lohse, M., & Usadel, B. (2014). Trimmomatic: a flexible trimmer for Illumina sequence data. Bioinformatics, 30(15), 2114-2120.
+
+
+
+MacManes, M. D. (2014). On the optimal trimming of high-throughput mRNA sequence data. Frontiers in genetics, 5, 13.
+
