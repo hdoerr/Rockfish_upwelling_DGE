@@ -1,0 +1,313 @@
+---
+title: "Gopher_mapping_RSEM_bowtie"
+author: "Holly"
+date: "January 10, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Sample file 
+
+First we need to create a new sample file with all of the trimmo file names and corresponding treatments. Set up should look something like this (without double "paired" files if they are single end): 
+
+control control_rep1  GG583_1_trimmo_paired.fq.gz GG583_2_trimmo_paired.fq.gz
+control control_rep2  GG596_1_trimmo_paired.fq.gz GG596_2_trimmo_paired.fq.gz
+control control_rep3  GG595_1_trimmo_paired.fq.gz GG595_2_trimmo_paired.fq.gz
+control control_rep4  GG593_1_trimmo_paired.fq.gz GG593_2_trimmo_paired.fq.gz
+
+moderate  moderate_rep1 GG831_1_trimmo_paired.fq.gz GG831_2_trimmo_paired.fq.gz
+moderate  moderate_rep2 GG646_1_trimmo_paired.fq.gz GG646_2_trimmo_paired.fq.gz
+moderate  moderate_rep3 GG815_1_trimmo_paired.fq.gz GG815_2_trimmo_paired.fq.gz
+moderate  moderate_rep4 GG633_1_trimmo_paired.fq.gz GG633_2_trimmo_paired.fq.gz
+
+extreme extreme_rep1  GG620_1_trimmo_paired.fq.gz GG620_2_trimmo_paired.fq.gz
+extreme extreme_rep2  GG826_1_trimmo_paired.fq.gz GG826_2_trimmo_paired.fq.gz
+extreme extreme_rep3  GG823_1_trimmo_paired.fq.gz GG823_2_trimmo_paired.fq.gz
+extreme extreme_rep4  GG607_1_trimmo_paired.fq.gz GG607_2_trimmo_paired.fq.gz
+
+upwelling upwelling_rep1 GG795_1_trimmo_paired.fq.gz GG795_2_trimmo_paired.fq.gz
+upwelling upwelling_rep2 GG797_1_trimmo_paired.fq.gz GG797_2_trimmo_paired.fq.gz
+upwelling upwelling_rep3 GG675_1_trimmo_paired.fq.gz GG675_2_trimmo_paired.fq.gz
+upwelling upwelling_rep4 GG671_1_trimmo_paired.fq.gz GG671_2_trimmo_paired.fq.gz
+
+relaxation  relaxation_rep1 GG804_1_trimmo_paired.fq.gz GG804_2_trimmo_paired.fq.gz
+relaxation  relaxation_rep2 GG806_1_trimmo_paired.fq.gz GG806_2_trimmo_paired.fq.gz
+relaxation  relaxation_rep3 GG808_1_trimmo_paired.fq.gz GG808_2_trimmo_paired.fq.gz
+relaxation  relaxation_rep4 GG811_1_trimmo_paired.fq.gz GG811_2_trimmo_paired.fq.gz
+
+
+
+
+
+
+# Mapping  and Counting
+
+
+
+We will map and count using 2 different assemblies:
+
+1. Copper muscle OA de novo transcriptome (cite: Hamilton et al. 2017)
+
+2. Copper gill Hypoxia de novo transcriptome (cite: Logan, pers comm)
+
+
+
+For this step, we will use two programs to map to the assembly and quantify the number of transcripts expressed in each sample (bowtie and RSEM). We will run this code on treebeard because mapping is a computationally intenstive step. Be sure you are in the QC directory with the XXXtrimmo.fastq files and the samples_file_trimmo. 
+
+
+
+1. First, map to the Copper muscle OA de novo transcriptome:
+
+```{bash, eval=FALSE}
+
+perl /opt/trinityrnaseq-Trinity-v2.4.0/util/align_and_estimate_abundance.pl \
+
+--transcripts /home/data/rockfish/assemblies/Copper_Trinity_LT.fasta --seqType fq \
+
+--samples_file /home/data/rockfish/EXP10_Scaur_fluct_gill/QC/samples_file_trimmo \
+
+--est_method RSEM --aln_method bowtie --trinity_mode \
+
+--output_dir RSEM_Copper_Trinity_LT 
+
+```
+
+The important output files from this step (`RSEM.genes.results`) will go into new directory called `RSEM_Copper_Trinity_LT` to keep them separate from those in the next step.
+
+
+
+2. Second, map to the Copper gill Hypoxia de novo transcriptome
+
+
+
+```{bash, eval=FALSE}
+
+perl /opt/trinityrnaseq-Trinity-v2.4.0/util/align_and_estimate_abundance.pl \
+
+--transcripts /home/data/rockfish/assemblies/CGH_Trinity_CL.fasta --seqType fq \
+
+--samples_file /home/data/rockfish/EXP10_Scaur_fluct_gill/QC/samples_file_trimmo \
+
+--est_method RSEM --prep_reference --aln_method bowtie --trinity_mode \
+
+--output_dir RSEM_CGH_Trinity_CL                              
+
+```
+
+The mapping rates ranged from 85-91% for this assembly. The important output files from this step (`RSEM.genes.results`) will go into new directory called `RSEM_CGH_Trinity_CL` to keep them separate from those in step 1.
+
+
+
+## Build counts matrix and perform differential expression analysis
+
+
+
+These following set of steps need to be performed SEPARATELY using the output files from each assembly completed above.
+
+
+
+1. Build Transcript and Gene Expression Matrices
+
+
+
+The input files for this next step are the `RSEM.genes.results` files for each sample. The program will create a single `counts.matrix` file that has the counts for each contig in the assembly accross ALL our samples.
+
+
+
+```{bash, eval=FALSE}
+
+perl /opt/trinityrnaseq-Trinity-v2.4.0/util/abundance_estimates_to_matrix.pl \
+
+--est_method RSEM \
+
+--name_sample_by_basedir \
+
+control_rep1/RSEM.genes.results control_rep2/RSEM.genes.results control_rep3/RSEM.genes.results control_rep4/RSEM.genes.results \
+
+moderate_rep1/RSEM.genes.results moderate_rep2/RSEM.genes.results moderate_rep3/RSEM.genes.results moderate_rep4/RSEM.genes.results \
+
+extreme_rep1/RSEM.genes.results extreme_rep2/RSEM.genes.results extreme_rep3/RSEM.genes.results extreme_rep4/RSEM.genes.results \
+
+relaxation_rep1/RSEM.genes.results relaxation_rep2/RSEM.genes.results relaxation_rep3/RSEM.genes.results relaxation_rep4/RSEM.genes.results \
+
+upwelling_rep1/RSEM.genes.results upwelling_rep2/RSEM.genes.results upwelling_rep3/RSEM.genes.results upwelling_rep4/RSEM.genes.results 
+
+```
+
+
+
+The output files from this step are 1) a 'counts.matrix' file that is used for downstream analyses of differential expression, and 2) the TMM.EXPR.matrix file is used as the gene expression matrix in most other analyses. For information on the importance of TMM (or cross-sample normalization in general), see Robinson & Oshlack, Genome Biology 2010 and Dillies et al., Brief Bioinf, 2012.
+
+
+
+
+
+2. Compare Replicates
+
+```{bash, eval=FALSE}
+
+perl /opt/trinityrnaseq-Trinity-v2.4.0/Analysis/DifferentialExpression/PtR \
+
+--matrix matrix.counts.matrix \
+
+--samples /home/data/rockfish/EXP10_Scaur_fluct_gill/QC/samples_file_trimmo --CPM --log2 \
+
+--min_rowSums 10 \
+
+--compare_replicates
+
+```
+
+
+
+This allows us to compare replicates to one another. 
+
+
+
+3. Compare Replicates Across Samples
+
+```{bash, eval=FALSE}
+
+perl /opt/trinityrnaseq-Trinity-v2.4.0/Analysis/DifferentialExpression/PtR \
+
+--matrix matrix.counts.matrix \
+
+--min_rowSums 10 \
+
+-s /home/data/rockfish/EXP10_Scaur_fluct_gill/QC/samples_file_trimmo \
+
+--log2 --CPM --sample_cor_matrix
+
+```
+
+
+
+This generates a correlation matrix across all samples.
+
+
+
+4. Generate PCA Plot
+
+```{bash, eval=FALSE}
+
+perl /opt/trinityrnaseq-Trinity-v2.4.0/Analysis/DifferentialExpression/PtR \
+
+--matrix matrix.counts.matrix \
+
+-s /home/data/rockfish/EXP10_Scaur_fluct_gill/QC/samples_file_trimmo \
+
+--min_rowSums 10 --log2 \
+
+--CPM --center_rows \
+
+--prin_comp 3 
+
+```
+
+
+
+This performs a principal components analysis and makes a plot to compare replicates.
+
+
+
+5. Run Differential Gene Expression Analysis with edgeR
+
+
+
+Now to the fun part! Let's run our differential expression analysis!
+
+
+
+```{bash, eval=FALSE}
+
+perl /opt/trinityrnaseq-Trinity-v2.4.0/Analysis/DifferentialExpression/run_DE_analysis.pl  \
+
+--matrix matrix.counts.matrix \
+
+--method edgeR \
+
+--samples_file /home/data/rockfish/EXP10_Scaur_fluct_gill/QC/samples_file_trimmo
+
+```
+
+
+
+6. Identify DE genes with p-val and fold change cut-off
+
+
+
+This step can be run multple times using different p-values and fold-change cut-offs. Before you run this command, `cd` into the edgeR directory created in the last step.
+
+
+
+```{bash, eval=FALSE}
+
+perl /opt/trinityrnaseq-Trinity-v2.4.0/Analysis/DifferentialExpression/analyze_diff_expr.pl \
+
+--matrix /home/data/rockfish/EXP10_Scaur_fluct_gill/QC/RSEM_CGH_Trinity_CL/matrix.TMM.EXPR.matrix \
+
+-P 0.05 \
+
+-C 1 \
+
+--samples /home/data/rockfish/EXP10_Scaur_fluct_gill/QC/samples_file
+
+```
+
+
+
+7. Download edgeR output files to personal computer
+
+
+
+First, open a new terminal window on home computer and use `scp` to secure copy these files to the bio430 github repository
+
+
+
+```{bash, eval=FALSE}
+
+scp loga8761s@treebeard.csumb.edu:/home/data/rockfish/EXP10_Scaur_fluct_gill/QC/edgeR.40768.dir/* /Users/loga8761/github/bio430/edgeR.40768.dir/  # also get samples file
+
+```
+
+
+
+8. From here, we will work in Rstudio 
+
+
+
+## References
+
+
+
+**De novo assembly:**
+
+
+
+Hamilton, Scott L., Cheryl A. Logan, Hamilton W. Fennie, Susan M. Sogard, James P. Barry, April D. Makukhov, Lauren R. Tobosa, Kirsten Boyer, Christopher F. Lovera, and Giacomo Bernardi. "Species-specific responses of juvenile rockfish to elevated pCO2: from behavior to genomics." PloS one 12, no. 1 (2017): e0169670.
+
+
+
+**Bowtie (program used for alignment of sequence files to assembly):**
+
+
+
+Langmead, B. (2010). Aligning short sequencing reads with Bowtie. Current protocols in bioinformatics, 11-7.
+
+
+
+**RSEM (program used for transcript quantification):**
+
+
+
+Li, B., & Dewey, C. N. (2011). RSEM: accurate transcript quantification from RNA-Seq data with or without a reference genome. BMC bioinformatics, 12(1), 323.
+
+
+
+**edgeR (program used for differential gene expression analysis):**
+
+
+
+Robinson, M. D., McCarthy, D. J., & Smyth, G. K. (2010). edgeR: a Bioconductor package for differential expression analysis of digital gene expression data. Bioinformatics, 26(1), 139-140.
