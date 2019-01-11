@@ -46,35 +46,33 @@ relaxation  relaxation_rep4 GG811_1_trimmo_paired.fq.gz GG811_2_trimmo_paired.fq
 
 
 
-We will map and count using 2 different assemblies:
+We will map and count using our previously created de novo assembly:
 
-1. Copper muscle OA de novo transcriptome (cite: Hamilton et al. 2017)
-
-2. Copper gill Hypoxia de novo transcriptome (cite: Logan, pers comm)
+1. Gopher gill hypoxia + OA de novo transcriptome (cite: Logan, pers comm)
 
 
 
-For this step, we will use two programs to map to the assembly and quantify the number of transcripts expressed in each sample (bowtie and RSEM). We will run this code on treebeard because mapping is a computationally intenstive step. Be sure you are in the QC directory with the XXXtrimmo.fastq files and the samples_file_trimmo. 
+For this step, we will use two programs to map to the assembly and quantify the number of transcripts expressed in each sample (bowtie and RSEM). We will run this code on treebeard because mapping is a computationally intenstive step. Be sure you are in the same directory with the trimmo files, the samples_file_trimmo, and the de novo assembly file. ****All file paths in this example are to the home directory, because of original permission issues while getting started. However, it is important to eventually store all files in the correct rockfish experimental data folder on treebeard, as home directories usually don't have a lot of space and can run out.
 
 
 
-1. First, map to the Copper muscle OA de novo transcriptome:
+1. First, map to the Gopher gill hypoxia + OA de novo transcriptome (use nohup command to allow it to run in the background, as it will take a few days):
 
 ```{bash, eval=FALSE}
 
 perl /opt/trinityrnaseq-Trinity-v2.4.0/util/align_and_estimate_abundance.pl \
 
---transcripts /home/data/rockfish/assemblies/Copper_Trinity_LT.fasta --seqType fq \
+--transcripts /home/doerr5227/HD_Gopher_raw/Gopher_HMD_Trinity.fasta --seqType fq \
 
---samples_file /home/data/rockfish/EXP10_Scaur_fluct_gill/QC/samples_file_trimmo \
+--samples_file /home/doer5227/HD_Gopher_raw/samples_file_trimmo \
 
---est_method RSEM --aln_method bowtie --trinity_mode \
+--est_method RSEM --prep_reference --aln_method bowtie --trinity_mode \
 
---output_dir RSEM_Copper_Trinity_LT 
+--output_dir RSEM_Gopher_HMD_Trinity
 
 ```
 
-The important output files from this step (`RSEM.genes.results`) will go into new directory called `RSEM_Copper_Trinity_LT` to keep them separate from those in the next step.
+The important output files from this step (`RSEM.genes.results`) will go into new directory called `RSEM_Gopher_HMD_Trinity`.
 
 
 
