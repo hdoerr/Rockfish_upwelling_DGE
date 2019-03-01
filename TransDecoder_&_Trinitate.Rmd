@@ -1,0 +1,37 @@
+---
+title: "TransDecoder_&_Trinitate"
+author: "Holly"
+date: "February 28, 2019"
+output: html_document
+---
+
+(Adapted from instructions on https://github.com/TransDecoder/TransDecoder/wiki)
+
+1. Make sure TransDecoder is downloaded and installed properly on the server. 
+
+2. To test command, the TransDecoder utility is run on a fasta file containing the target transcript sequences. The simplest usage is as follows:
+```{r}
+TransDecoder.LongOrfs -t target_transcripts.fasta
+```
+
+
+3.Running TransDecoder
+
+Step 1: extract the long open reading frames. Adapt the above script to include absolute path to the program files on your server, and run on your transcriptome file. 
+
+```{r}
+
+/opt/TransDecoder-2.0.1/TransDecoder.LongOrfs -t Gopher_HMD_Trinity.fasta
+```
+
+Step 2: (optional) Optionally, identify ORFs with homology to known proteins via blast or pfam searches.
+See Including homology searches as ORF retention criteria section below.
+
+Step 3: predict the likely coding regions. 
+```{r}
+TransDecoder.Predict -t Gopher_HMD_Trinity.fasta [ homology options ]
+```
+
+If the transcripts are oriented according to the sense strand, then include the -S flag to examine only the top strand. Full usage info found on website linked above.
+
+The final set of candidate coding regions can be found as files '.transdecoder.' where extensions include .pep, .cds, .gff3, and .bed
