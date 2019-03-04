@@ -22,6 +22,32 @@ Step 1: extract the long open reading frames. Adapt the above script to include 
 ```{r}
 
 /opt/TransDecoder-2.0.1/TransDecoder.LongOrfs -t Gopher_HMD_Trinity.fasta
+
+
+
+##############################################################################################
+
+#example run output: 
+/opt/TransDecoder-2.0.1/TransDecoder.LongOrfs -t Gopher_HMD_Trinity.fasta
+
+
+-first extracting base frequencies, we'll need them later.
+CMD: /opt/TransDecoder-2.0.1/util/compute_base_probs.pl Gopher_HMD_Trinity.fasta 0 > Gopher_HMD_Trinity.fasta.transdecoder_dir/base_freqs.dat
+CMD: touch Gopher_HMD_Trinity.fasta.transdecoder_dir/base_freqs.dat.ok
+
+
+- extracting ORFs from transcripts.
+-total transcripts to examine: 587501
+[587500/587501] = 100.00% done
+
+#################################
+### Done preparing long ORFs.  ###
+##################################
+
+        Use file: Gopher_HMD_Trinity.fasta.transdecoder_dir/longest_orfs.pep  for Pfam and/or BlastP searches to enable homology-based coding region identification.
+
+        Then, run TransDecoder.Predict for your final coding region predictions.
+
 ```
 
 Step 2: (optional) Optionally, identify ORFs with homology to known proteins via blast or pfam searches.
@@ -29,7 +55,7 @@ See Including homology searches as ORF retention criteria section below.
 
 Step 3: predict the likely coding regions. 
 ```{r}
-TransDecoder.Predict -t Gopher_HMD_Trinity.fasta [ homology options ]
+/opt/TransDecoder-2.0.1/TransDecoder.Predict -t Gopher_HMD_Trinity.fasta [ homology options ]
 ```
 
 If the transcripts are oriented according to the sense strand, then include the -S flag to examine only the top strand. Full usage info found on website linked above.
