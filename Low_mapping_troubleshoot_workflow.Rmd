@@ -1,0 +1,84 @@
+---
+title: "RSEM_troubleshoot_workflow"
+author: "Holly"
+date: "June 12, 2019"
+output: html_document
+---
+
+This document serves as notes to document the workflow I use as I try to troubleshoot issues of low mapping percentage in my sample files after running RSEM. 
+
+The first change I made was to run RSEM using bowtie2 instead of bowtie. 
+```{r}
+nohup perl /opt/trinityrnaseq-Trinity-v2.4.0/util/align_and_estimate_abundance.pl --transcripts /home/data/rockfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/Black_raw/bowtie2/Copper_Trinity_LT.fasta --seqType fq --samples_file /home/data/rockfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/Black_raw/bowtie2/samples_file_trimmo.txt --est_method RSEM --prep_reference --aln_method bowtie2 --trinity_mode --output_dir RSEM_Blackgil_HMD_Trinity
+
+```
+
+
+The second change I tried was to map only the singletons (in hopes it would expose issues where pairs were mapping incorrectly). This required changing the samples file to look as follows: 
+
+```{r}
+control control_rep1  BG36_1_trimmo_paired.fq.gz 
+control control_rep2  BG32_1_trimmo_paired.fq.gz 
+control control_rep3  BG41_1_trimmo_paired.fq.gz
+control control_rep4  BG43_1_trimmo_paired.fq.gz 
+
+moderate  moderate_rep1 BG2_1_trimmo_paired.fq.gz 
+moderate  moderate_rep2 BG3_1_trimmo_paired.fq.gz
+moderate  moderate_rep3 BG6_1_trimmo_paired.fq.gz 
+moderate  moderate_rep4 BG8_1_trimmo_paired.fq.gz
+
+extreme extreme_rep1  BG75_1_trimmo_paired.fq.gz 
+extreme extreme_rep2  BG72_1_trimmo_paired.fq.gz 
+extreme extreme_rep3  BG68_1_trimmo_paired.fq.gz 
+extreme extreme_rep4  BG78_1_trimmo_paired.fq.gz 
+
+upwelling upwelling_rep1 BG21_1_trimmo_paired.fq.gz 
+upwelling upwelling_rep2 BG22_1_trimmo_paired.fq.gz 
+upwelling upwelling_rep3 BG25_1_trimmo_paired.fq.gz
+upwelling upwelling_rep4 BG23_1_trimmo_paired.fq.gz
+
+relaxation  relaxation_rep1 BG49_1_trimmo_paired.fq.gz 
+relaxation  relaxation_rep2 BG52_1_trimmo_paired.fq.gz 
+relaxation  relaxation_rep3 BG53_1_trimmo_paired.fq.gz 
+relaxation  relaxation_rep4 BG55_1_trimmo_paired.fq.gz 
+
+```
+
+
+Each of these measures slightly improved the mapping rates (by a maximum total of around 8%), but majority of the samples were still under 80%. I also tried the same changes using Copper gill samples instead of Black - since the reference transcriptome was built from copper tissues, I was hopeful that the copper samples themselves might produce a higher mapping rate. ALthough there was improvement, the increase in mapping rates were similar to those of the black samples, with majority of the rates falling below 80%.
+
+Next I tried a different alignment based abundance estimation method, built into Trinity: eXpress. 
+
+```{r}
+nohup perl /opt/trinityrnaseq-Trinity-v2.4.0/util/align_and_estimate_abundance.pl --transcripts /home/data/rockfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/Black_raw/bowtie2/Copper_Trinity_LT.fasta --seqType fq --samples_file /home/data/rockfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/Black_raw/bowtie2/samples_file_trimmo.txt --est_method eXpress --prep_reference --aln_method bowtie2 --trinity_mode --output_dir eXpress_Blackgil_HMD_Trinity
+
+```
+
+Unfortunately, little to no improvement was observed in the mapping rates after running eXpress. I returned to using RSEM from this point on. 
+
+Next I tried two things together that finally yielded a real improvement. 
+
+First, I  stopped working with gill samples altogether and focused on working with the copper muscle samples, with the reasoning that the reference transcriptome was built from copper muscle samples (from a previuos experiment) and therefore these samples *should* be most similar to the transcriptome. 
+
+Second, I chnaged the SS_lib_type parameter from RF (reverse-forward) to FR (forward-reverse) after learning that the transcriptome was created with the FR parameter, and these need to match in the RSEM code as well. 
+
+```{r}
+nohup perl /opt/trinityrnaseq-Trinity-v2.4.0/util/align_and_estimate_abundance.pl --transcripts /home/data/rockfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/Copper_raw/muscle/Copper_Trinity_LT.fasta --seqType fq --SS_lib_type FR --samples_file /home/data/rockfish/EXP11_ScarnSmel_fluct_gill/P101HW18090797-01-01/Copper_raw/muscle/samples_file_trimmo.txt --est_method RSEM --prep_reference --aln_method bowtie2 --trinity_mode --output_dir RSEM_Copmusc_FR_HMD_Trinity
+```
+
+And eureka! The output of this attempt produced a range of mapping rates from 79% - 91%, which is high enough to work with. 
+
+However, after this breakthrough I also tried the FR parameter change while mapping copper gill files to the copper transcriptome, and unfortunately there was not much improvement. The culprit at this stage could likely be an old transcriptome that is too specific in it's tissues, so for the copper files I will eventually attempt to create a de novo transcriptome that is built from all 4 tissues (brain, gill, liver, muscle).
+
+To keep moving forward, I decided to rebuild my gopher and black de novo transcriptomes. Originally, I had built them using the incorrect RF parameter, so I expected a big difference in mapping rates after rebuilding them using FR. 
+
+I rebuilt each transcriptome using the following (Black only shown for example):
+
+```{r}
+nohup perl /opt/trinityrnaseq-Trinity-v2.4.0/Trinity --trimmomatic --seqType fq --max_memory 50G --SS_lib_type FR --left SM_R_1.fq.gz,SM_U_1.fq.gz,SM_E_1.fq.gz,SM_C_1.fq.gz --right SM_R_2.fq.gz,SM_U_2.fq.gz,SM_E_2.fq.gz,SM_C_2.fq.gz --CPU 10 --full_cleanup --output Black_HMD_Trinity_FR > Black_HMD_Trinity_FR_out.txt 2>&1 &
+
+```
+
+Following successful completion, subsequent mapping of a few files produced great mapping rates - at last - with each file at 93% mapping or higher. 
+
+The next steps to move forward are to attempt paired mapping once more with these new transcriptomes, as well as to build the multi-tissue transcriptome for the copper files. 
