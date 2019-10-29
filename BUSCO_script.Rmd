@@ -1,0 +1,26 @@
+---
+title: "BUSCO_script"
+author: "Holly"
+date: "October 29, 2019"
+output: html_document
+---
+This is a workflow to run BUSCO stats on your de novo transcriptome. This code is executed from the command line in Khaleesi. 
+
+1. Create a new BUSCO directory to store your output files. 
+```{r}
+mkdir BUSCO
+```
+
+2. Navigate to new directory. Then download a reference genome that your transcriptome will be compared to. For rockfish, we used actinopterygii (species zebrafish). You can also find the most recent version at http://busco.ezlab.org. Once downloaded, unzip the dataset. 
+```{r}
+cd BUSCO/
+curl -OL http://busco.ezlab.org/v2/datasets/actinopterygii_odb9.tar.gz
+tar -xvzf actinopterygii_odb9.tar.gz
+```
+
+3. Run BUSCO. The nohup prefix is optional, but always a nice insurance in case your connection is unstable while running. Be careful with long and short form flags that you are using the correct syntax. Also be sure to include the filepath of your reference dataset, EVEN IF YOU ARE RUNNING THE SCRIPT FROM THE SAME FOLDER IT IS LOCATED. 
+```{r}
+nohup python /opt/busco/BUSCO.py -i /projects/rockfish/transcriptomics/EXP11_ScarnSmel_fluct_gill/Copgil_mapping/Copgil_HMD_Trinity_FR.fasta -o Copgil_busco_actinopterygii -l /projects/rockfish/transcriptomics/EXP11_ScarnSmel_fluct_gill/Copgil_mapping/BUSCO/actinopterygii_odb9 -m tran --cpu 10 --species ZEBRAFISH
+```
+
+Note that the transcriptome you are testing does not have to be in the same folder, as long as you provide the full filepath. 
