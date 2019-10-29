@@ -14,7 +14,9 @@ mkdir BUSCO
 2. Navigate to new directory. Then download a reference genome that your transcriptome will be compared to. For rockfish, we used actinopterygii (species zebrafish). You can also find the most recent version at http://busco.ezlab.org. Once downloaded, unzip the dataset. 
 ```{r}
 cd BUSCO/
-curl -OL http://busco.ezlab.org/v2/datasets/actinopterygii_odb9.tar.gz
+  
+curl -OL http://busco.ezlab.org/v2/datasets/actinopterygii_odb9.tar.gz 
+
 tar -xvzf actinopterygii_odb9.tar.gz
 ```
 
@@ -24,3 +26,5 @@ nohup python /opt/busco/BUSCO.py -i /projects/rockfish/transcriptomics/EXP11_Sca
 ```
 
 Note that the transcriptome you are testing does not have to be in the same folder, as long as you provide the full filepath. 
+
+4. You'll know the run has completed when you have a short_summary.txt file, full-table file and "missing...." file. These files will be located in the new "run..." directory. 
