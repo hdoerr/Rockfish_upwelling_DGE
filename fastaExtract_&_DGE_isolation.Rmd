@@ -22,14 +22,14 @@ more Black_DE_list.txt
 ```
 
 #Prepping your assembly. 
-3. Next, you will need to create a new assembly file that does not include the _iX isoform endings on each contig name. This is because unfortunately, our fastaExtract.py script is not robust enough to recognize the names with those endings, and will only pull the ones that match your reference DGE_list exactly. Since all of the assembly contig names originally have the _iX, the script will produce an empty fasta file if they are not first removed. 
+3. Next, you will need to create a new assembly file that does not include the '_iX' isoform endings on each contig name. This is because unfortunately, our fastaExtract.py script is not robust enough to recognize the names with those endings, and will only pull the ones that match your reference DGE_list exactly. Since all of the assembly contig names originally have the '_iX', the script will produce an empty fasta file if they are not first removed. 
 
 You can remove them using a simple 'sed' find and replace command, that uses the "." character as a wildcard: 
 ```{r}
 sed 's/_i../' Black_HMD_Trinity_FR.fasta > no_more_isoforms.fasta
 ```
 
-To be sure it worked correctly, your can check the _iX counts for each before and after file: 
+To be sure it worked correctly, your can check the '_iX' counts for each before and after file: 
 ```{r}
 awk '/_i../' Black_HMD_Trinity_FR.fasta | wc -l
 awk '/_i../' no_more_isoforms.fasta | wc -l
