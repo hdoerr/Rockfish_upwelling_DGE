@@ -5,12 +5,12 @@ date: "November 12, 2019"
 output: html_document
 ---
 
-## This page details the workflow I followed to isolate a list of differentially expressed contig names and sequences from my fasta assembly, using the script fastaExtract.py (on treebeard and khaleesi). These commands/lines of code were all executed from the command line.
+# This page details the workflow I followed to isolate a list of differentially expressed contig names and sequences from my fasta assembly, using the script fastaExtract.py (on treebeard and khaleesi). These commands/lines of code were all executed from the command line.
 
 To run this script, you will need two files: a list of DE contig names (pulled from your diffExpr....centered.dat file) in .txt format, and your assembly (fasta) file. 
 
-##Creating your DGE list. 
-# 1. To begin, you need to isolate the first column of your DiffEXpr...centered.dat matrix file and print to a new .txt. 
+#Creating your DGE list. 
+1. To begin, you need to isolate the first column of your DiffEXpr...centered.dat matrix file and print to a new .txt. 
 ```{r}
 awk '{print $1}' DGE_matrix_P0_01.txt > Black_DE_list.txt
 ```
@@ -21,8 +21,8 @@ awk '{print $1}' DGE_matrix_P0_01.txt > Black_DE_list.txt
 more Black_DE_list.txt
 ```
 
-##Prepping your assembly. 
-# 3. Next, you will need to create a new assembly file that does not include the _iX isoform endings on each contig name. This is because unfortunately, our fastaExtract.py script is not robust enough to recognize the names with those endings, and will only pull the ones that match your reference DGE_list exactly. Since all of the assembly contig names originally have the _iX, the script will produce an empty fasta file if they are not first removed. 
+#Prepping your assembly. 
+3. Next, you will need to create a new assembly file that does not include the _iX isoform endings on each contig name. This is because unfortunately, our fastaExtract.py script is not robust enough to recognize the names with those endings, and will only pull the ones that match your reference DGE_list exactly. Since all of the assembly contig names originally have the _iX, the script will produce an empty fasta file if they are not first removed. 
 
 You can remove them using a simple 'sed' find and replace command, that uses the "." character as a wildcard: 
 ```{r}
@@ -36,8 +36,8 @@ awk '/_i../' no_more_isoforms.fasta | wc -l
 ```
 If your sed command worked properly, you should have a return of 0 on the second awk. 
 
-## Extracting your DE list from assembly. 
-# 4. Finally, you now have the files you need to run the fastaExtract.py script. Use your newly created fasta file and DE list file as follows: 
+# Extracting your DE list from assembly. 
+4. Finally, you now have the files you need to run the fastaExtract.py script. Use your newly created fasta file and DE list file as follows: 
 ```{r}
 python /usr/local/bin/fastaExtract.py -i -list /projects/rockfish/transcriptomics/EXP11_ScarnSmel_fluct_gill/Black_mapping/Black_DGE/Black_DE_list.txt -fasta /projects/rockfish/transcriptomics/EXP11_ScarnSmel_fluct_gill/Black_mapping/Black_DGE/no_more_isoforms.fasta > Black_DE_seqs.fasta
 ```
