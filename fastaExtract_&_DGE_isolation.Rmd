@@ -1,0 +1,159 @@
+---
+title: "fastaExtract_&_DGE_isolation_script"
+author: "Holly"
+date: "November 12, 2019"
+output: html_document
+---
+
+## This page details the workflow I followed to isolate a list of differentially expressed contig names and sequences from my fasta assembly, using the script fastaExtract.py (on treebeard and khaleesi). These commands/lines of code were all executed from the command line.
+
+To run this script, you will need two files: a list of DE contig names (pulled from your diffExpr....centered.dat file) in .txt format, and your assembly (fasta) file. 
+
+##Creating your DGE list. 
+# 1. To begin, you need to isolate the first column of your DiffEXpr...centered.dat matrix file and print to a new .txt. 
+```{r}
+awk '{print $1}' DGE_matrix_P0_01.txt > Black_DE_list.txt
+```
+  Note: I renamed my centered.dat matrix file to DGE_matrix_p0_01.txt becuase   for some reason awk didn't like the repeated periods in the original name     and called it a syntax error. 
+
+2. Check your file to make sure that is contains the data that you intended to pull. You should see a list of contig names and only that. 
+```{r}
+more Black_DE_list.txt
+```
+
+##Prepping your assembly. 
+# 3. Next, you will need to create a new assembly file that does not include the _iX isoform endings on each contig name. This is because unfortunately, our fastaExtract.py script is not robust enough to recognize the names with those endings, and will only pull the ones that match your reference DGE_list exactly. Since all of the assembly contig names originally have the _iX, the script will produce an empty fasta file if they are not first removed. 
+
+You can remove them using a simple 'sed' find and replace command, that uses the "." character as a wildcard: 
+```{r}
+sed 's/_i../' Black_HMD_Trinity_FR.fasta > no_more_isoforms.fasta
+```
+
+To be sure it worked correctly, your can check the _iX counts for each before and after file: 
+```{r}
+awk '/_i../' Black_HMD_Trinity_FR.fasta | wc -l
+awk '/_i../' no_more_isoforms.fasta | wc -l
+```
+If your sed command worked properly, you should have a return of 0 on the second awk. 
+
+## Extracting your DE list from assembly. 
+# 4. Finally, you now have the files you need to run the fastaExtract.py script. Use your newly created fasta file and DE list file as follows: 
+```{r}
+python /usr/local/bin/fastaExtract.py -i -list /projects/rockfish/transcriptomics/EXP11_ScarnSmel_fluct_gill/Black_mapping/Black_DGE/Black_DE_list.txt -fasta /projects/rockfish/transcriptomics/EXP11_ScarnSmel_fluct_gill/Black_mapping/Black_DGE/no_more_isoforms.fasta > Black_DE_seqs.fasta
+```
+
+Check your new output file by looking at the contents and comparing the contig count:
+```{r}
+more Black_DE_seqs.fasta
+
+awk '/TRINITY/' Black_DE_seqs.fasta | wc -l
+awk '/TRINITY/' Black_DE_list.txt |wc -l
+```
+
+
+
+
+# If needed, the fastaExtract.py source code is here (with usage statement):
+```{python}
+#!/usr/bin/env python
+import sys
+import os
+#import set
+
+#from set import Set
+
+# Usage.
+if len(sys.argv) < 2:
+        print ""
+        print "This program extracts fasta sequences from a file by either exluding or including sequence based on a provide list of sequence names"
+        print "Usage: %s -i/e -list file1 -fasta file2"
+        print "-list: list of sequence names"
+        print "-fasta: fasta file"
+        print "-i: include list contents"
+	print "-e: exclude list contents"
+        print ""
+        sys.exit()
+
+# Parse args.
+for i in range(len(sys.argv)):
+        if sys.argv[i] == "-list":
+                infile1 = sys.argv[i+1]
+        elif sys.argv[i] == "-fasta":
+                infile2 = sys.argv[i+1]
+        elif sys.argv[i] == "-i":
+                switch = True
+	elif sys.argv[i] == "-e":
+		switch = False
+
+# get files
+fls = [infile1,infile2]
+geneContigs = set([])
+name = set([])
+sequence = str()
+proceed = False
+fin2 = open(fls[1], "r")
+#fin1 = open(fls[0], "r")
+prev = str()
+counter = 0
+#print infile1
+
+# get list of contigs of interest
+if(fls[0].count('#')<1):
+    fin1 = open(fls[0], "r")
+    for line in fin1:
+        temp=line.lstrip('>').split()
+        geneContigs.add(temp[0])
+    fin1.close()
+else:
+    geneContigs.add(fls[0].strip('"').rstrip('#'))
+#print list(geneContigs)
+
+# extract contigs from larger file inclusion
+if(switch==True):
+    for line in fin2:
+        if(line.count('|')>0):
+		name = line.lstrip('>').split('|')
+	else:
+		name = line.lstrip('>').split()
+	#print name
+        if((str(name[0]) in geneContigs) == True):
+	    if len(sequence) > 0:
+                print sequence
+	        sequence = ""
+            proceed = True
+	    print ">%s" % (name[0])	
+            continue
+        
+        elif(proceed == True)&(line[0]!='>'):
+    	    sequence += line.strip()
+	    continue
+        else:
+            proceed = False
+    print sequence
+
+# extract contigs from larger file exclusion
+elif(switch==False):
+    for line in fin2:
+        if(line.count('|')>0):
+                name = line.lstrip('>').split('|')
+        else:
+		name = line.lstrip('>').split()
+        if(((str(name[0]) in geneContigs) == False) and (line[0]=='>')):
+	    if len(sequence) > 0:
+                print sequence
+                sequence = ""
+            proceed = True
+            print ">%s" % (name)
+            continue
+        
+        elif(proceed == True)&(line[0]!='>'):
+            sequence += line.strip()
+            continue
+        else:
+            proceed = False
+    print sequence    
+fin2.close()
+
+
+```
+
