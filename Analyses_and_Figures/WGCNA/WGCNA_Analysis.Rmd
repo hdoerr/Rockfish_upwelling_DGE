@@ -7,7 +7,10 @@ output: html_document
 
 This is a WGCNA tutorial as created by The University of Texas at Austin found here: https://wikis.utexas.edu/display/bioiteam/Clustering+using+WGCNA
 
-Files for this tutorial (in the WGCNA.zip folder) were dowloaded from here : https://wikis.utexas.edu/display/bioiteam/WGCNA+files and uploaded to the BIO_MSCI430_530_Sp20 directory. 
+Files for the original tutorial (in the WGCNA.zip folder) were dowloaded from here : https://wikis.utexas.edu/display/bioiteam/WGCNA+files and uploaded to the BIO_MSCI430_530_Sp20 directory. 
+
+Files used in this adapted script can be found here: 
+https://github.com/hdoerr/Rockfish_upwelling_DGE/tree/master/Analyses_and_Figures/WGCNA
 
 #Before running the following tutorial, make sure that the following required packages are installed and that you have set the proper working directory.
 ```{r}
@@ -26,14 +29,14 @@ library(WGCNA)
 library(flashClust)
 
 #Set your current working directory (where all your files are)
-setwd("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Gopher_gill/Goph_map_to_copgil/WGCNA/") # Change the text within quotes as necessary.
+setwd("C:/Users/hdoer/Desktop/Github/Rockfish_upwelling_DGE/Rockfish_upwelling_DGE/Analyses_and_Figures/WGCNA") # Change the text within quotes as necessary.
 ```
 
 # Step 1: Upload data into R and reformat for WGCNA
 
 ```{r}
 # This creates an object called "datExpr" that contains the normalized counts file output from DESeq2
-datExpr = read.csv("Goph_norm_expr_4_filt.csv")
+datExpr = read.csv("Black_gill_normalized_counts_shortened.csv")
 # "head" the file to preview it
 head(datExpr) # You see that genes are listed in a column named "X" and samples are in columns
 
@@ -66,7 +69,7 @@ if (!gsg$allOK)
 ```
 Create an object called "datTraits" that contains your trait data
 ```{r}
-datTraits = read.csv("Gopher_gill_phenotypic.csv")
+datTraits = read.csv("Black_gill_phenotypic_new.csv")
 head(datTraits)
 
 #Then form a data frame analogous to expression data that will hold the clinical traits.
