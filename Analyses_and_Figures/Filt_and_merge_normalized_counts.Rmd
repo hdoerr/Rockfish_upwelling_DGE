@@ -1,0 +1,213 @@
+---
+title: "Filtering_and_merging_normalized_counts"
+author: "Holly"
+date: "November 3, 2020"
+output: html_document
+---
+
+This script provides a workflow to filter out low expression transcriptomics using Trinity's filter_low_expr_transcripts.pl
+
+(https://github.com/trinityrnaseq/trinityrnaseq/wiki/Trinity-Transcript-Quantification#filtering-transcripts)
+
+
+
+##1. Filtering highest isoform
+
+A. First, we will work from the command line to filter our transcripts based on highest(longest) isoform. Save the output from this function in a new file (it will be in fasta format and can be saved as a .fasta or .txt). We used our TMM.matrix file produced from RSEM as our matrix input for this command, as it provides normalized expression values for our list of transcripts.
+```{r}
+perl /projects/rockfish/transcriptomics/bake1349/trinityrnaseq-Trinity-v2.4.0/util/filter_low_expr_transcripts.pl --matrix ../All_DGE/matrix.TMM.EXPR.matrix --transcripts /projects/rockfish/transcriptomics/EXP11_ScarnSmel_fluct_gill/Copgil_mapping/Copgil_HMD_Trinity_FR.fasta --highest_iso_only --trinity_mode > Black_normalized_filtered.txt
+
+#note: you can also filter isoforms in this program with the argument --min_pct_dom_iso <int> and it will filter isoforms based on  a minimum person of dominant isoform expression that you set (ex: 10%). This command is mutually exclusive with the other filter, so you use one or the other. 
+
+```
+
+
+
+##2. Prepping our new file for compatibility with expression filtering
+
+A. Next, using our new file containing filtered isoforms as transcript input, we will filter again based on expression. However, the transcripts in this file still retain their _iX isoform endings, and the transcripts in our TMM.matrix file do not. Unfortunately this version of the program does not seem to be able to recognize the transcript without the isoform ending, so we must first remove them. (This should be okay as our TMM file was already produced using the longest isoforms, and thus the transcripts in each list should be unique and matching). To filter, we use: 
+```{r}
+#Use sed function to search your file for the characters "_i", and any numbers following - represented by the "..". Then replace these characters with a space, represented by the space between the last two slashes.
+
+sed 's/_i../ /' Black_normalized_filtered.txt > Black_normalized_filtered_no_ix.txt
+```
+
+B. Check that you retained the correct number of transcripts by computing the 'TRINITY' count: 
+```{r}
+awk '/TRINITY*/ ' Black_normalized_filtered.txt | wc -l
+          -> 420348
+awk '/TRINITY*/ ' Black_normalized_filtered_no_ix.txt | wc -l
+          -> 420348
+```
+
+
+
+#3. Filtering low expression
+
+A. Now we can filter expression using our new no endings file:
+```{r}
+perl /projects/rockfish/transcriptomics/bake1349/trinityrnaseq-Trinity-v2.4.0/util/filter_low_expr_transcripts.pl --matrix ../All_DGE/matrix.TMM.EXPR.matrix --transcripts Black_normalized_filtered_no_ix.txt --min_expr_any 1.5 --trinity_mode > Black_normalized_filtered_expr_1.5.txt
+    #You can play around with the expression threshold, i.e. 0.5 vs 1
+    # ->  Retained 98432 / 420348 = 23.42% of total transcripts.
+```
+
+B . At this point you will likely want to pull out just the contig names to create a new list, then open in excel and save as a .csv. You can easily pull out the contig names by using the following on the command line:
+```{r}
+#pulls each line starting with "TRINITY" and prints to a new txt file
+awk '/TRINITY*/ ' Black_normalized_filtered_expr_1.5.txt >Black_norm_filt_trans_list_1.5.txt
+
+#pulls the first column (only the TRINITY contig names) from the previous file and prints them to a new file
+awk '{print $1}' Black_norm_filt_trans_list_1.5.txt > Black_norm_filt_trans_1.5_list.txt
+```
+
+
+c. Now that we have our fully filtered transcript list, we can pull it off of the server to our local directory and use R to merge the filtered list with our original TMM.matrix to obtain corresponding expression values to use for our WGCNA Analysis. Open your file in excel to add 'ContigName' as the column header and save as a .csv file.
+
+Then to merge in Rstudio, we will take advantage of the `tidyverse` package. You only need to install the package once, but you will need to load the library every time you open up R or RStudio on your computer. So, first install it using the `install.packages` command, then load the library using the command below:
+
+
+
+```{r setup, message = FALSE, warning = FALSE}
+
+library(tidyverse) # after install.packages("tidyverse")
+
+```
+
+
+
+##3. Using R or RStudio to merge files
+
+
+First, open RStudio and read in your filtered .csv files:
+
+
+
+A. Read in 2 files into R and assign them to `filterlist` and `exprlist`
+
+```{r read files, eval=FALSE, message = FALSE, warning = FALSE}
+setwd("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Black_gill/Mapped_to_copper/WGCNA/")
+
+exprlist <- read.csv("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Black_gill/Mapped_to_copper/WGCNA/Black_gill_normalized_counts.csv")
+
+filterlist <- read.csv("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Black_gill/Mapped_to_copper/WGCNA/Black_norm_filt_trans_1.5_list.csv")
+
+```
+
+
+B. View header row of each file to make sure the contig names are identical. In our case, the first column in both files should be called `ContigName`.
+
+
+
+```{r, eval=FALSE}
+
+head(filterlist) # view top of file
+
+head(exprlist)
+
+```
+
+C. Once you confirm the column header is the same for both data frames, extract your `filterlist` expression data only from `exprlist` using the `right_join` function.
+
+```{r merge, eval=FALSE, message = FALSE, warning = FALSE}
+
+merged <- right_join(exprlist,filterlist, by = "ContigName")  # merge 2 files
+
+head(merged)
+
+```
+
+
+
+D. View the new `merged` data frame containing only the normalized expression data for your `filterlist` of interest. Take a look at the new file dimensions and contents using `dim` and `head` to make sure the join worked!
+
+
+
+```{r, eval=FALSE}
+
+head(merged)
+
+dim(merged) # get df dimensions (e.g., number of rows and columns)
+
+```
+
+
+E. You should see the same number of observations in your new `merged` file as you had in your `filterlist` file. If you instead see the same number as your `exprlist` file, you need to switch the order of your files in your `right_join` function. Or, if you have more or less than your `filterlist` file and it does not match your `exprlist` file, it could be that you either still have isoforms, or your contig names do not match exactly in your two lists. You can count the number of contigs in your new file to see if there are duplicates with the following:
+
+```{r, eval=FALSE}
+
+merged %>% count(ContigName) #count number of ContigNames in `merged`
+
+```
+
+
+
+#4.If everything looks good, save your `merged` file as a new .csv to your current working directory
+
+
+
+```{r, eval=FALSE}
+
+write_csv(merged, "Black_norm_expr_1.5_filt.csv")
+
+```
+
+From here you can continue on to your WGCNA analysis! 
+
+Find the WGCNA workflow here: 
+https://github.com/hdoerr/Rockfish_upwelling_DGE/blob/master/Analyses_and_Figures/WGCNA/WGCNA_Analysis.Rmd
+
+
+
+
+
+
+
+## Using bash to merge files
+
+(YOU DO NOT NEED TO DO THIS- FOR REFEENCE ONLY)
+
+
+
+1. Convert .txt files to .csv files in bash
+
+
+
+The first thing we want to do is make sure the files we want to work with are in .csv format. We have two files: a gene list of interest and a really big annotation file for all the contigs in our assembly. If the files are in text (.txt) files, we need to convert to .csv using bash commands below. This will ensure we are using the same file format (and R likes .csv files). If the files are already in .csv format, skip this step and move on.
+
+
+
+`sed 's/ \+/,/g' ifile.txt > ofile.csv`
+
+
+
+Example:
+
+```{r, eval=FALSE, message = FALSE, warning = FALSE}
+
+sed 's/ \+/,/g' Exp5_CGH_Trinity_annotated.txt > Exp5_CGH_Trinity_annotated.csv
+
+```
+
+ 
+
+2. Sort and join two files in bash
+
+
+
+Let's say we want to extract the annotations for just our differentially expressed genes (DGElist). First we have to `sort` each .csv file by column 1. Then, we can `join` by column 1 assuming col 1 in  both files contains `ContigNames`:
+
+
+
+```{bash, eval=FALSE, message = FALSE, warning = FALSE}
+
+sort -t , -k 1,1 DGElist.csv > DGElist_sorted.csv
+
+sort -t , -k 1,1 big_annotation_file.csv > big_annotation_file_sorted.csv
+
+join -j1 DGElist_sorted.csv big_annotation_file_sorted.csv > annot_DGE.csv
+
+```
+
+ 
+
+Now we have a much smaller file (annot_DGE.csv) containing the annotations for our DGE list only!
