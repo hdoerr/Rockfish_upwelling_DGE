@@ -15,7 +15,7 @@ This script provides a workflow to filter out low expression transcriptomics usi
 
 A. First, we will work from the command line to filter our transcripts based on highest(longest) isoform. Save the output from this function in a new file (it will be in fasta format and can be saved as a .fasta or .txt). We used our TMM.matrix file produced from RSEM as our matrix input for this command, as it provides normalized expression values for our list of transcripts.
 ```{r}
-perl /projects/rockfish/transcriptomics/bake1349/trinityrnaseq-Trinity-v2.4.0/util/filter_low_expr_transcripts.pl --matrix matrix.TMM.EXPR.matrix --transcripts /projects/rockfish/transcriptomics/EXP11_ScarnSmel_fluct_gill/Copgil_mapping/Copgil_HMD_Trinity_FR.fasta --highest_iso_only --trinity_mode > Copper_normalized_filtered.txt
+perl /projects/rockfish/transcriptomics/bake1349/trinityrnaseq-Trinity-v2.4.0/util/filter_low_expr_transcripts.pl --matrix ../All_DGE/matrix.TMM.EXPR.matrix --transcripts /projects/rockfish/transcriptomics/EXP11_ScarnSmel_fluct_gill/Copgil_mapping/Copgil_HMD_Trinity_FR.fasta --highest_iso_only --trinity_mode > Black_normalized_filtered.txt
 
 #note: you can also filter isoforms in this program with the argument --min_pct_dom_iso <int> and it will filter isoforms based on  a minimum person of dominant isoform expression that you set (ex: 10%). This command is mutually exclusive with the other filter, so you use one or the other. 
 
@@ -27,14 +27,16 @@ perl /projects/rockfish/transcriptomics/bake1349/trinityrnaseq-Trinity-v2.4.0/ut
 
 A. Next, using our new file containing filtered isoforms as transcript input, we will filter again based on expression. However, the transcripts in this file still retain their _iX isoform endings, and the transcripts in our TMM.matrix file do not. Unfortunately this version of the program does not seem to be able to recognize the transcript without the isoform ending, so we must first remove them. (This should be okay as our TMM file was already produced using the longest isoforms, and thus the transcripts in each list should be unique and matching). To filter, we use: 
 ```{r}
-sed 's/_i../ /' Copper_normalized_filtered.txt > Copgil_normalized_filtered_no_ix.txt #This commands searches through the file for the characters "_i" and anything that comes immediately after it (before spaces), and replaces it with a space.
+#Use sed function to search your file for the characters "_i", and any numbers following - represented by the "..". Then replace these characters with a space, represented by the space between the last two slashes.
+
+sed 's/_i../ /' Black_normalized_filtered.txt > Black_normalized_filtered_no_ix.txt
 ```
 
 B. Check that you retained the correct number of transcripts by computing the 'TRINITY' count: 
 ```{r}
-awk '/TRINITY*/ ' Copgil_normalized_filtered.txt | wc -l
+awk '/TRINITY*/ ' Black_normalized_filtered.txt | wc -l
           -> 420348
-awk '/TRINITY*/ ' Copgil_normalized_filtered_no_ix.txt | wc -l
+awk '/TRINITY*/ ' Black_normalized_filtered_no_ix.txt | wc -l
           -> 420348
 ```
 
@@ -44,22 +46,24 @@ awk '/TRINITY*/ ' Copgil_normalized_filtered_no_ix.txt | wc -l
 
 A. Now we can filter expression using our new no endings file:
 ```{r}
-perl /projects/rockfish/transcriptomics/bake1349/trinityrnaseq-Trinity-v2.4.0/util/filter_low_expr_transcripts.pl --matrix matrix.TMM.EXPR.matrix --transcripts Copgil_normalized_filtered_no_ix.txt --min_expr_any 6 --trinity_mode > Copgil_normalized_filtered_expr_6.txt
+perl /projects/rockfish/transcriptomics/bake1349/trinityrnaseq-Trinity-v2.4.0/util/filter_low_expr_transcripts.pl --matrix ../All_DGE/matrix.TMM.EXPR.matrix --transcripts Black_normalized_filtered_no_ix.txt --min_expr_any 1.5 --trinity_mode > Black_normalized_filtered_expr_1.5.txt
     #You can play around with the expression threshold, i.e. 0.5 vs 1
     # ->  Retained 98432 / 420348 = 23.42% of total transcripts.
 ```
 
-At this point you will likely want to pull out just the contig names to create a new list, then open in excel and save as a .csv. You can easily pull out the contig names by using the following on the command line:
+B . At this point you will likely want to pull out just the contig names to create a new list, then open in excel and save as a .csv. You can easily pull out the contig names by using the following on the command line:
 ```{r}
-awk '/TRINITY*/ ' Copgil_normalized_filtered_expr_6.txt > Copgil_norm_filt_trans_list_6.txt #finds each 'TRINITY' line and prints it to a new file
+#pulls each line starting with "TRINITY" and prints to a new txt file
+awk '/TRINITY*/ ' Black_normalized_filtered_expr_1.5.txt >Black_norm_filt_trans_list_1.5.txt
 
-awk '{print $1}' Copgil_norm_filt_trans_list_6.txt > Copgil_norm_filt_trans_6_list.txt #searches the new file to pull the first column (in this case the contig ID we want) and print it to a new file 
+#pulls the first column (only the TRINITY contig names) from the previous file and prints them to a new file
+awk '{print $1}' Black_norm_filt_trans_list_1.5.txt > Black_norm_filt_trans_1.5_list.txt
 ```
 
 
-Now that we have our fully filtered transcript list, we can use R to merge the filtered list with our original TMM.matrix to obtain corresponding expression values to use for our WGCNA Analysis
+c. Now that we have our fully filtered transcript list, we can pull it off of the server to our local directory and use R to merge the filtered list with our original TMM.matrix to obtain corresponding expression values to use for our WGCNA Analysis. Open your file in excel to add 'ContigName' as the column header and save as a .csv file.
 
-To do this in R or RStudio, we will take advantage of the `tidyverse` package. You only need to install the package once, but you will need to load the library every time you open up R or RStudio on your computer. So, first install it using the `install.packages` command, then load the library using the command below:
+Then to merge in Rstudio, we will take advantage of the `tidyverse` package. You only need to install the package once, but you will need to load the library every time you open up R or RStudio on your computer. So, first install it using the `install.packages` command, then load the library using the command below:
 
 
 
@@ -74,18 +78,18 @@ library(tidyverse) # after install.packages("tidyverse")
 ##3. Using R or RStudio to merge files
 
 
-First, open RStudio and read in your .csv files:
+First, open RStudio and read in your filtered .csv files:
 
 
 
 A. Read in 2 files into R and assign them to `filterlist` and `exprlist`
 
 ```{r read files, eval=FALSE, message = FALSE, warning = FALSE}
-setwd("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Copper_gill/DGE_sans_4_samps/WGCNA/")
+setwd("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Black_gill/Mapped_to_copper/WGCNA/")
 
-exprlist <- read.csv("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Copper_gill/DGE_sans_4_samps/WGCNA/Copgill_normalized_counts.csv")
+exprlist <- read.csv("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Black_gill/Mapped_to_copper/WGCNA/Black_gill_normalized_counts.csv")
 
-filterlist <- read.csv("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Gopher_gill/Goph_map_to_copgil/WGCNA/Copgil_norm_filt_trans_6_list.csv")
+filterlist <- read.csv("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Black_gill/Mapped_to_copper/WGCNA/Black_norm_filt_trans_1.5_list.csv")
 
 ```
 
@@ -127,7 +131,7 @@ dim(merged) # get df dimensions (e.g., number of rows and columns)
 ```
 
 
-You should see the same number of observations in your new `merged` file as you had in your `filterlist` file. If you instead see the same number as your `exprlist` file, you need to switch the order of your files in your `right_join` function. Or, if you have more or less than your `filterlist` file and it does not match your `exprlist` file, it could be that you either still have isoforms, or your contig names do not match exactly in your two lists. You can count the number of contigs in your new file to see if there are duplicates with the following:
+E. You should see the same number of observations in your new `merged` file as you had in your `filterlist` file. If you instead see the same number as your `exprlist` file, you need to switch the order of your files in your `right_join` function. Or, if you have more or less than your `filterlist` file and it does not match your `exprlist` file, it could be that you either still have isoforms, or your contig names do not match exactly in your two lists. You can count the number of contigs in your new file to see if there are duplicates with the following:
 
 ```{r, eval=FALSE}
 
@@ -143,14 +147,14 @@ merged %>% count(ContigName) #count number of ContigNames in `merged`
 
 ```{r, eval=FALSE}
 
-write_csv(merged, "Goph_norm_expr_6_filt.csv")
+write_csv(merged, "Black_norm_expr_1.5_filt.csv")
 
 ```
 
 From here you can continue on to your WGCNA analysis! 
 
-Find further WGCNA instructions here: 
-
+Find the WGCNA workflow here: 
+https://github.com/hdoerr/Rockfish_upwelling_DGE/blob/master/Analyses_and_Figures/WGCNA/WGCNA_Analysis.Rmd
 
 
 

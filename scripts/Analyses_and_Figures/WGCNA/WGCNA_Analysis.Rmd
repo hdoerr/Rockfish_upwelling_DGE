@@ -7,10 +7,10 @@ output: html_document
 
 This is a WGCNA tutorial as created by The University of Texas at Austin found here: https://wikis.utexas.edu/display/bioiteam/Clustering+using+WGCNA
 
-Files for the original tutorial (in the WGCNA.zip folder) were dowloaded from here : https://wikis.utexas.edu/display/bioiteam/WGCNA+files and uploaded to the BIO_MSCI430_530_Sp20 directory. 
+Files for this tutorial (in the WGCNA.zip folder) were dowloaded from here : https://wikis.utexas.edu/display/bioiteam/WGCNA+files and uploaded to the BIO_MSCI430_530_Sp20 directory. 
 
-Files used in this adapted script can be found here: 
-https://github.com/hdoerr/Rockfish_upwelling_DGE/tree/master/Analyses_and_Figures/WGCNA
+NOTE: Before beginning, make sure to filter out noise-causing low expression and zeros from normalized counts file following the script here: https://github.com/hdoerr/Rockfish_upwelling_DGE/blob/master/scripts/Analyses_and_Figures/WGCNA/Filt_and_merge_normalized_counts.Rmd
+****if after filtering your counts file has over 30,000 contigs, you will have to use a super computer (such an account with Jetstream or Cyverse Discovery Environment) or filter your file down further. 
 
 #Before running the following tutorial, make sure that the following required packages are installed and that you have set the proper working directory.
 ```{r}
@@ -29,7 +29,7 @@ library(WGCNA)
 library(flashClust)
 
 #Set your current working directory (where all your files are)
-setwd("C:/Users/hdoer/Desktop/Github/Rockfish_upwelling_DGE/Rockfish_upwelling_DGE/Analyses_and_Figures/WGCNA") # Change the text within quotes as necessary.
+#setwd("C:/Users/hdoer/Desktop/thesis/new/data/DGE/Black_gill/Mapped_to_copper/WGCNA/") # Change the text within quotes as necessary.
 ```
 
 # Step 1: Upload data into R and reformat for WGCNA
@@ -112,7 +112,7 @@ text(sft$fitIndices[,1], sft$fitIndices[,5], labels=powers, cex=cex1, col="red")
 ```{r}
 #build a adjacency "correlation" matrix
 enableWGCNAThreads()
-softPower = 18
+softPower = 14
 adjacency = adjacency(datExpr, power = softPower, type = "signed") #specify network type
 head(adjacency)
 ```
@@ -136,22 +136,32 @@ plot(geneTree, xlab="", sub="", main= "Gene Clustering on TOM-based dissimilarit
 minModuleSize = 30
 dynamicMods = cutreeDynamic(dendro= geneTree, distM= dissTOM, deepSplit=2, pamRespectsDendro= FALSE, minClusterSize = minModuleSize)
 dynamicColors= labels2colors(dynamicMods)
+#Calculate eigengenes
 MEList= moduleEigengenes(datExpr, colors= dynamicColors,softPower = softPower)
 MEs= MEList$eigengenes
+#Calculate dissimilarity of module eigengenes
 MEDiss= 1-cor(MEs)
+#Cluster module eigengenes
 METree= flashClust(as.dist(MEDiss), method= "average")
-save(dynamicMods, MEList, MEs, MEDiss, METree, file= "Network_allSamples_signed_RLDfiltered.RData")
+#save(dynamicMods, MEList, MEs, MEDiss, METree, file= "Network_allSamples_signed_RLDfiltered.RData")
 ```
+
 Then, this plots the tree showing how the eigengenes cluster together
 ```{r}
 #plots tree showing how the eigengenes cluster together
 #INCLUE THE NEXT LINE TO SAVE TO FILE
 #pdf(file="clusterwithoutmodulecolors.pdf")
+sizeGrWindow(7,6)
 plot(METree, main= "Clustering of module eigengenes", xlab= "", sub= "")
-#set a threhold for merging modules. In this example we are not merging so MEDissThres=0.0
-MEDissThres = 0.0
-merge = mergeCloseModules(datExpr, dynamicColors, cutHeight= MEDissThres, verbose =3)
+#set a threhold for merging modules. In this example we chose a cut height of 0.25, corresponding to crrelation of 0.75, to merge
+MEDissThres = 0.4
+#Plot the cut line into the dendogram
+abline(h=MEDissThres, col = "red")
+#Call an automatic merging function
+merge = mergeCloseModules(datExpr, dynamicColors, cutHeight = MEDissThres, verbose =3)
+#Ther merged module colors
 mergedColors = merge$colors
+#Eigengenes of the new merged modules:
 mergedMEs = merge$newMEs
 #INCLUE THE NEXT LINE TO SAVE TO FILE
 #dev.off()
@@ -185,23 +195,31 @@ MEs0 = moduleEigengenes(datExpr, moduleColors)$eigengenes
 MEs = orderMEs(MEs0)
 moduleTraitCor = cor(MEs, datTraits, use= "p")
 moduleTraitPvalue = corPvalueStudent(moduleTraitCor, nSamples)
+
 ```
+
 
 Then, print the correlation heatmap between modules and traits
 
 ```{r}
-#Print correlation heatmap between modules and traits
+#sizeGrWindow(15, 15)
+#This will display correlations and their p-values
 textMatrix= paste(signif(moduleTraitCor, 2), "\n(", 
-                        signif(moduleTraitPvalue, 1), ")", sep= "")
+                         signif(moduleTraitPvalue, 2), 
+                         ")", sep= "");
+#textMatrix = formatC(moduleTraitCor, digits = 2, format = "f")
 dim(textMatrix)= dim(moduleTraitCor)
-par(mar= c(6, 8.5, 3, 3))
+par(mar= c(6, 8.5, 3, 3));
 ```
+
+
 
 Finally, display the correlation values with a heatmap plot:
 ```{r}
 #display the correlation values with a heatmap plot
+#sizeGrWindow(11,8)
 #INCLUE THE NEXT LINE TO SAVE TO FILE
-#pdf(file="heatmap.pdf")
+pdf(file="heatmap.pdf", height=11, width=8)
 labeledHeatmap(Matrix= moduleTraitCor, 
             xLabels= names(datTraits), 
             yLabels= names(MEs), 
@@ -209,13 +227,15 @@ labeledHeatmap(Matrix= moduleTraitCor,
             colorLabels= FALSE, 
             colors= blueWhiteRed(50), 
             textMatrix= textMatrix, 
-            setStdMargins= FALSE, 
-            cex.text= 0.5, 
+            setStdMargins= TRUE, 
+            cex.text= 0.75, 
             zlim= c(-1,1), 
             main= paste("Module-trait relationships"))
 #INCLUE THE NEXT LINE TO SAVE TO FILE
-#dev.off()
+dev.off()
 ```
+
+
 
 And volia! You should have a beautiful clustered heatmap showing the correlation of traits and genes.
 
@@ -224,16 +244,219 @@ For further analysis, if you wanted to pull out genes belonging to a certain mod
 names(datExpr)[moduleColors=="yellow"]
 ```
 
+#Further analysis and visual comparisons
+
+1. Represent module trait correlations as a heatmap - version 2 = prettier 
+
+```{r}
+# module-trait correlations
+quartz()
+library(RColorBrewer)
+modLabels=sub("ME","",names(MEs))
+
+ps=signif(moduleTraitPvalue,1)
+cors=signif(moduleTraitCor,2)
+textMatrix = cors;
+#paste(cors, "\n(",ps, ")", sep = "");
+textMatrix[ps>0.05]="-"
+dim(textMatrix) = dim(moduleTraitCor)
+
+par(mar = c(6, 8.5, 3, 3));
+```
+
+```{r}
+
+# Display the correlation values within a heatmap plot
+pdf(file="Black_trait_heatmap_clean.pdf", height=9, width=8)
+labeledHeatmap(Matrix = moduleTraitCor,
+xLabels = names(datTraits),
+ySymbols = modLabels,
+yLabels = modLabels,
+colorLabels = FALSE,
+colors = colorRampPalette(c("blue","lightblue","white","coral","red"))(50),
+textMatrix = textMatrix,
+setStdMargins = TRUE,
+cex.text = 0.9,
+zlim = c(-.8,.8),
+main = paste("Black Module-Trait correlations"))
+dev.off()
+```
+
+2. Create a barplot to compare module sizes.
+
+```{r}
+# module size barplot
+labelShift=300 # increase to move module size labels to the right
+quartz()
+par(mar = c(6, 8.5, 3, 3));
+mct=table(moduleColors)
+mct[modLabels]
+x=barplot(mct[rev(modLabels)],horiz=T,las=1,xlim=c(0,8000),col=rev(modLabels))
+text(mct[rev(modLabels)]+labelShift,y=x,mct[rev(modLabels)],cex=0.9) 
+```
+
+             
+3. Calculate gene relationship to trait for important modules:
+
+```{r}
+# Define variable weight containing the weight column of datTrait - leave weight as variable, but change names in first 2 commands
+weight = as.data.frame(datTraits$Ucrit_relative); #change to your trait name of interest
+names(weight) = "Ucrit_relative"
+# names (colors) of the modules
+modNames = substring(names(MEs), 3)
+geneModuleMembership = as.data.frame(cor(datExpr, MEs, use = "p"));
+MMPvalue = as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership), nSamples));
+names(geneModuleMembership) = paste("MM", modNames, sep="");
+names(MMPvalue) = paste("p.MM", modNames, sep="");
+geneTraitSignificance = as.data.frame(cor(datExpr, weight, use = "p"));
+GSPvalue = as.data.frame(corPvalueStudent(as.matrix(geneTraitSignificance), nSamples));
+names(geneTraitSignificance) = paste("GS.", names(weight), sep="");
+names(GSPvalue) = paste("p.GS.", names(weight), sep="");
+```
+
+Then plot the correlations for visual comparison
+
+```{r}
+#Gene-trait significance correlation plots
+#windows()
+
+moduleCols=c( "turquoise","orangered4","antiquewhite4", "skyblue3", "lightcyan1") 
+par(mfrow=c(1,4))
+for (module in moduleCols) {
+column = match(module, modNames);
+moduleGenes = moduleColors==module;
+#sizeGrWindow(7, 7);
+par(mfrow = c(1,1));
+verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]),
+ abs(geneTraitSignificance[moduleGenes, 1]),
+                 xlab = paste("ModMem in", module, "module"),
+                 ylab = "Gene Sig for Ucrit_relative",
+                 main = paste("MM vs. GS\n"),
+                 cex.main = 1.2, cex.lab = 1.2, cex.axis = 1.2, col = module)
+   }     
+```
+
+
+4. Plotting massive table of all information - module membership, genes, gene names, etc.
+
+```{r}
+annot=read.csv("Black_Trinity_FR_longest_iso.swissprot.csv",header=TRUE,sep=",") #past_apr2014_iso2gene.tab; kb8_mar2014_iso2gene.tab
+
+#match probes in the data set to the probe IDs in the annotation file
+probes = names(datExpr)
+probes2annot = match(probes,annot$ContigName)
+datGS.Traits=data.frame(cor(datExpr,datTraits,use="p"))
+names(datGS.Traits)=paste("cor",names(datGS.Traits),sep=".")
+datME=moduleEigengenes(datExpr,moduleColors)$eigengenes
+datKME=signedKME(datExpr, datME, outputColumnName="MM.")
+datOutput=data.frame(ProbeID=names(datExpr),annot[probes2annot,],moduleColors,datKME,datGS.Traits)
+datOutput=datOutput[order((datOutput$MM.black),decreasing=T),]
+write.table(datOutput,"AnnotatedNetworkAnalysisResults1k_rlog_Black_Merge40.csv",row.names=F,sep=",") 
+```
+
+5. Now you can save files containing the gene names and uniprot ID's for each interesting module.
+
+```{r}
+#Change the module color to create and save each file in the code below. Interesting modules for copgil "turquoise","orangered4","antiquewhite4", "skyblue3", "lightcyan1"
+
+#Get the corresponding uniprot id's
+allUniprotIDs=annot$Uniprot_Swpt_ID[probes2annot];
+
+#Get the gene names
+modGenes = names(datExpr)[moduleColors=="turquoise"]
+#Get their uniprot ID's
+modUniprotIDs=allUniprotIDs[moduleColors=="turquoise"];
+#Write to a new file and save
+fileName = data.frame(modGenes, modUniprotIDs)
+write.table(fileName, "turquoise_Module_genes_uniprot.csv", row.names=F, sep=",")
 
 
 
 
+```
 
 
+#The following example illustrates 4 main ways of annotating columns and rows of a heatmap so you can customize your heatmap plot further.
 
+- Copy and paste the whole example into an R session with an interactive plot window; alternatively, you may replace the command sizeGrWindow below by opening another graphical device such as pdf.
 
+1. Generate a matrix to be plotted
 
+```{r}
+nCol = 8; nRow = 7;
+mat = matrix(runif(nCol*nRow, min = -1, max = 1), nRow, nCol);
 
+rowColors = standardColors(nRow);
+colColors = standardColors(nRow + nCol)[(nRow+1):(nRow + nCol)];
 
+rowColors;
+colColors;
+
+sizeGrWindow(9,7)
+par(mfrow = c(2,2))
+par(mar = c(4, 5, 4, 6));
+```
+
+2. Label rows and columns by text:
+
+```{r}
+labeledHeatmap(mat, xLabels = colColors, yLabels = rowColors, 
+               colors = greenWhiteRed(50),
+               setStdMargins = FALSE, 
+               textMatrix = signif(mat, 2),
+               main = "Text-labeled heatmap");
+```
+
+3. Label rows and columns by colors:
+
+```{r}
+rowLabels = paste("ME", rowColors, sep="");
+colLabels = paste("ME", colColors, sep="");
+
+labeledHeatmap(mat, xLabels = colLabels, yLabels = rowLabels,
+               colorLabels = TRUE,
+               colors = greenWhiteRed(50),
+               setStdMargins = FALSE,
+               textMatrix = signif(mat, 2),
+               main = "Color-labeled heatmap");
+```
+
+4. Mix text and color labels:
+
+```{r}
+rowLabels[3] = "Row 3";
+colLabels[1] = "Column 1";
+
+labeledHeatmap(mat, xLabels = colLabels, yLabels = rowLabels,
+               colorLabels = TRUE,
+               colors = greenWhiteRed(50),
+               setStdMargins = FALSE,
+               textMatrix = signif(mat, 2), 
+               main = "Mix-labeled heatmap");
+```
+
+5. Color labels and additional text labels
+
+```{r}
+rowLabels = paste("ME", rowColors, sep="");
+colLabels = paste("ME", colColors, sep="");
+
+extraRowLabels = paste("Row", c(1:nRow));
+extraColLabels = paste("Column", c(1:nCol));
+```
+
+6. Extend margins to fit all labels
+
+```{r}
+par(mar = c(6, 6, 4, 6));
+labeledHeatmap(mat, xLabels = colLabels, yLabels = rowLabels,
+               xSymbols = extraColLabels,
+               ySymbols = extraRowLabels,
+               colorLabels = TRUE,
+               colors = greenWhiteRed(50),
+               setStdMargins = FALSE,
+               textMatrix = signif(mat, 2),
+               main = "Text- + color-labeled heatmap");
+```
 
 
