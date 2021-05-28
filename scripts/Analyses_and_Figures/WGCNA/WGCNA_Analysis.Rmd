@@ -15,14 +15,14 @@ NOTE: Before beginning, make sure to filter out noise-causing low expression and
 #Before running the following tutorial, make sure that the following required packages are installed and that you have set the proper working directory.
 ```{r}
 #Only run the following to install BiocManager if not already installed
-#if (!requireNamespace("BiocManager", quietly = TRUE))
-    #install.packages("BiocManager")
-#BiocManager::install()
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install()
 
 # Only run the following commands once to install WGCNA and flashClust on your computer
 
-#BiocManager::install("WGCNA")
-#install.packages("flashClust") 
+BiocManager::install("WGCNA")
+install.packages("flashClust") 
 
 # Load WGCNA and flashClust libraries every time you open R
 library(WGCNA)
@@ -36,7 +36,7 @@ library(flashClust)
 
 ```{r}
 # This creates an object called "datExpr" that contains the normalized counts file output from DESeq2
-datExpr = read.csv("Black_gill_normalized_counts_shortened.csv")
+datExpr = read.csv("Gopher_gill_normalized_counts_filt9_shortened.csv")
 # "head" the file to preview it
 head(datExpr) # You see that genes are listed in a column named "X" and samples are in columns
 
@@ -47,7 +47,7 @@ Manipulate the file so it matches the format that WGCNA needs:
 row.names(datExpr) = datExpr$X
 datExpr$X = NULL
 datExpr = as.data.frame(t(datExpr)) # now samples are rows and genes are columns
-dim(datExpr) # 48 samples and 1000 genes (you will have many more genes in reality)
+dim(datExpr) # 15 samples and 1500 genes (you will have many more genes in reality)
 head(datExpr)
 ```
 
@@ -69,13 +69,13 @@ if (!gsg$allOK)
 ```
 Create an object called "datTraits" that contains your trait data
 ```{r}
-datTraits = read.csv("Black_gill_phenotypic_new.csv")
+datTraits = read.csv("Gopher_gill_phenotypic_phys_and_upwell.csv")
 head(datTraits)
 
 #Then form a data frame analogous to expression data that will hold the clinical traits.
 rownames(datTraits) = datTraits$Sample
 datTraits$Sample = NULL
-table(rownames(datTraits)==rownames(datExpr)) #should return TRUE if datasets align correctly, otherwise your names are out of order
+table(rownames(datTraits)==rownames(datExpr)) #should return TRUE if datasets align correctly, otherwise your names are out of order. THIS IS VERY IMPORTANT FOR THE ANALYSIS TO RUN CORRECTLY
 head(datTraits)
 ```
 You have finished uploading and formatting expression and trait data. Expression data is in datExpr, corresponding traits are datTraits. You can save these data into one file if you'd like, but you will not need to load it for the continuing code to run.
@@ -87,7 +87,7 @@ save(datExpr, datTraits, file="SamplesAndTraits.RData")
 
 At this point you will need to identify sample outliers and choose a soft threshold power. These are easy to do and are well documented in the online tutorials.  It is suggested that you cluster samples by expression to identify any outliers before this step. This is provided in the attached R script.
 
-From this plot, we would choose a power of 18 because it's the lowest power for which the scale free topology index reaches 0.90 (red line).
+From this plot, we would choose a power of 14 because it's the lowest power for which the scale free topology index reaches 0.90 (red line).
 
 ```{r}
 # Choose a soft threshold power- USE A SUPERCOMPUTER IRL ------------------------------------
@@ -104,7 +104,7 @@ abline(h=0.90, col="red")
 plot(sft$fitIndices[,1], sft$fitIndices[,5], xlab= "Soft Threshold (power)", ylab="Mean Connectivity", type="n", main = paste("Mean connectivity"))
 text(sft$fitIndices[,1], sft$fitIndices[,5], labels=powers, cex=cex1, col="red")
  
-#from this plot, we would choose a power of 18 becuase it's the lowest power for which the scale free topology index reaches 0.90
+#from this plot, we would choose a power of 15 becuase it's the lowest power for which the scale free topology index reaches 0.90
 ```
 
 #Step 2: Construct a gene co-expression network and identify modules
@@ -112,7 +112,7 @@ text(sft$fitIndices[,1], sft$fitIndices[,5], labels=powers, cex=cex1, col="red")
 ```{r}
 #build a adjacency "correlation" matrix
 enableWGCNAThreads()
-softPower = 14
+softPower = 15
 adjacency = adjacency(datExpr, power = softPower, type = "signed") #specify network type
 head(adjacency)
 ```
@@ -153,8 +153,8 @@ Then, this plots the tree showing how the eigengenes cluster together
 #pdf(file="clusterwithoutmodulecolors.pdf")
 sizeGrWindow(7,6)
 plot(METree, main= "Clustering of module eigengenes", xlab= "", sub= "")
-#set a threhold for merging modules. In this example we chose a cut height of 0.25, corresponding to crrelation of 0.75, to merge
-MEDissThres = 0.4
+#set a threhold for merging modules. In this example we chose a cut height of 0.20, corresponding to correlation of 0.80, to merge. In otherwords, we only want to merge highly similar modules - 80% similarity. 
+MEDissThres = 0.20
 #Plot the cut line into the dendogram
 abline(h=MEDissThres, col = "red")
 #Call an automatic merging function
@@ -219,7 +219,7 @@ Finally, display the correlation values with a heatmap plot:
 #display the correlation values with a heatmap plot
 #sizeGrWindow(11,8)
 #INCLUE THE NEXT LINE TO SAVE TO FILE
-pdf(file="heatmap.pdf", height=11, width=8)
+#pdf(file="heatmap.pdf", height=11, width=8)
 labeledHeatmap(Matrix= moduleTraitCor, 
             xLabels= names(datTraits), 
             yLabels= names(MEs), 
@@ -232,7 +232,7 @@ labeledHeatmap(Matrix= moduleTraitCor,
             zlim= c(-1,1), 
             main= paste("Module-trait relationships"))
 #INCLUE THE NEXT LINE TO SAVE TO FILE
-dev.off()
+#dev.off()
 ```
 
 
@@ -267,7 +267,7 @@ par(mar = c(6, 8.5, 3, 3));
 ```{r}
 
 # Display the correlation values within a heatmap plot
-pdf(file="Black_trait_heatmap_clean.pdf", height=9, width=8)
+#pdf(file="Black_trait_heatmap_clean.pdf", height=9, width=8)
 labeledHeatmap(Matrix = moduleTraitCor,
 xLabels = names(datTraits),
 ySymbols = modLabels,
@@ -278,8 +278,8 @@ textMatrix = textMatrix,
 setStdMargins = TRUE,
 cex.text = 0.9,
 zlim = c(-.8,.8),
-main = paste("Black Module-Trait correlations"))
-dev.off()
+main = paste("Gopher Module-Trait correlations"))
+#dev.off()
 ```
 
 2. Create a barplot to compare module sizes.
@@ -299,19 +299,19 @@ text(mct[rev(modLabels)]+labelShift,y=x,mct[rev(modLabels)],cex=0.9)
 3. Calculate gene relationship to trait for important modules:
 
 ```{r}
-# Define variable weight containing the weight column of datTrait - leave weight as variable, but change names in first 2 commands
-weight = as.data.frame(datTraits$Ucrit_relative); #change to your trait name of interest
-names(weight) = "Ucrit_relative"
+# Define variable weight containing the weight column of datTrait
+swimspeed = as.data.frame(datTraits$Ucrit_relative); #change to your trait name of interest
+names(swimspeed) = "Ucrit_relative"
 # names (colors) of the modules
 modNames = substring(names(MEs), 3)
 geneModuleMembership = as.data.frame(cor(datExpr, MEs, use = "p"));
 MMPvalue = as.data.frame(corPvalueStudent(as.matrix(geneModuleMembership), nSamples));
 names(geneModuleMembership) = paste("MM", modNames, sep="");
 names(MMPvalue) = paste("p.MM", modNames, sep="");
-geneTraitSignificance = as.data.frame(cor(datExpr, weight, use = "p"));
+geneTraitSignificance = as.data.frame(cor(datExpr, swimspeed, use = "p"));
 GSPvalue = as.data.frame(corPvalueStudent(as.matrix(geneTraitSignificance), nSamples));
-names(geneTraitSignificance) = paste("GS.", names(weight), sep="");
-names(GSPvalue) = paste("p.GS.", names(weight), sep="");
+names(geneTraitSignificance) = paste("GS.", names(swimspeed), sep="");
+names(GSPvalue) = paste("p.GS.", names(swimspeed), sep="");
 ```
 
 Then plot the correlations for visual comparison
@@ -320,7 +320,7 @@ Then plot the correlations for visual comparison
 #Gene-trait significance correlation plots
 #windows()
 
-moduleCols=c( "turquoise","orangered4","antiquewhite4", "skyblue3", "lightcyan1") 
+moduleCols=c( "yellow","purple","red") 
 par(mfrow=c(1,4))
 for (module in moduleCols) {
 column = match(module, modNames);
@@ -340,7 +340,7 @@ verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]),
 4. Plotting massive table of all information - module membership, genes, gene names, etc.
 
 ```{r}
-annot=read.csv("Black_Trinity_FR_longest_iso.swissprot.csv",header=TRUE,sep=",") #past_apr2014_iso2gene.tab; kb8_mar2014_iso2gene.tab
+annot=read.csv("Copper_Trinity_FR_longest_iso.swissprot.csv",header=TRUE,sep=",") #Use whatever annotation file you have to go with your data
 
 #match probes in the data set to the probe IDs in the annotation file
 probes = names(datExpr)
@@ -351,24 +351,24 @@ datME=moduleEigengenes(datExpr,moduleColors)$eigengenes
 datKME=signedKME(datExpr, datME, outputColumnName="MM.")
 datOutput=data.frame(ProbeID=names(datExpr),annot[probes2annot,],moduleColors,datKME,datGS.Traits)
 datOutput=datOutput[order((datOutput$MM.black),decreasing=T),]
-write.table(datOutput,"AnnotatedNetworkAnalysisResults1k_rlog_Black_Merge40.csv",row.names=F,sep=",") 
+write.table(datOutput,"AnnotatedNetworkAnalysisResults1k_rlog_Gopher_Merge20.csv",row.names=F,sep=",") 
 ```
 
 5. Now you can save files containing the gene names and uniprot ID's for each interesting module.
 
 ```{r}
-#Change the module color to create and save each file in the code below. Interesting modules for copgil "turquoise","orangered4","antiquewhite4", "skyblue3", "lightcyan1"
+#Change the module color to create and save each file in the code below. Interesting modules for gopher "turquoise","yellow","purple", "red", "grey"
 
 #Get the corresponding uniprot id's
 allUniprotIDs=annot$Uniprot_Swpt_ID[probes2annot];
 
 #Get the gene names
-modGenes = names(datExpr)[moduleColors=="turquoise"]
+modGenes = names(datExpr)[moduleColors=="yellow"]
 #Get their uniprot ID's
-modUniprotIDs=allUniprotIDs[moduleColors=="turquoise"];
+modUniprotIDs=allUniprotIDs[moduleColors=="yellow"];
 #Write to a new file and save
 fileName = data.frame(modGenes, modUniprotIDs)
-write.table(fileName, "turquoise_Module_genes_uniprot.csv", row.names=F, sep=",")
+write.table(fileName, "yellow_Module_genes_uniprot.csv", row.names=F, sep=",")
 
 
 
